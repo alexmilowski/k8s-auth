@@ -1,32 +1,32 @@
 import os
 import sys
+import argparse
 from app.web import app
 
-client_id = None
-client_secret = None
-redirect_uri = 'http://localhost:5000/'
-endpoint = 'http://localhost:5000/'
-auth_provider = 'https://accounts.google.com/o/oauth2/v2/auth'
-token_provider = 'https://www.googleapis.com/oauth2/v4/token'
-if __name__ == '__main__':
-   client_id = sys.argv[1] if len(sys.argv)>1 else client_id
-   client_secret = sys.argv[2] if len(sys.argv)>2 else client_secret
-   redirect_uri = sys.argv[3] if len(sys.argv)>3 else redirect_uri
-   endpoint = sys.argv[4] if len(sys.argv)>4 else endpoint
-   auth_provider = sys.argv[5] if len(sys.argv)>5 else auth_provider
-   token_provider = sys.argv[6] if len(sys.argv)>6 else token_provider
+parser = argparse.ArgumentParser(description='Authetication proxy for k8s')
+parser.add_argument('client_id',help='The client id for the authentication provider.')
+parser.add_argument('client_secret',help='The client secret for the authentication provider.')
+parser.add_argument('--redirect-uri',help='The redirect uri to use for this service.',default='http://localhost:5000/')
+parser.add_argument('--endpoint',help='The endpoint of the service being proxied.',default='http://localhost:5000/')
+parser.add_argument('--auth-provider',help='The endpoint of the service being proxied.',default='https://accounts.google.com/o/oauth2/v2/auth')
+parser.add_argument('--token-provider',help='The endpoint of the service being proxied.',default='https://www.googleapis.com/oauth2/v4/token')
+parser.add_argument('--session-key',help='The flask session key')
+parser.add_argument('--debug',help='The flask session key',default=False)
+parser.add_argument('--no-verify-endpoint',default=False,action='store_true',help='Disables SSL key verification for endpoint')
 
-key = os.environ.get('SECRET_KEY')
-if key is None:
-   key = os.urandom(16)
-app.config['SECRET_KEY'] = key
-app.config['CLIENT_ID'] = client_id
-app.config['CLIENT_SECRET'] = client_secret
-app.config['REDIRECT_URI'] = redirect_uri
-app.config['ENDPOINT'] = endpoint
-app.config['AUTH_PROVIDER'] = auth_provider
-app.config['TOKEN_PROVIDER'] = token_provider
-app.config['DEBUG'] = True
+args = parser.parse_args()
+
+if args.session_key is None:
+   args.session_key = os.urandom(16)
+app.config['SECRET_KEY'] = args.session_key
+app.config['CLIENT_ID'] = args.client_id
+app.config['CLIENT_SECRET'] = args.client_secret
+app.config['REDIRECT_URI'] = args.redirect_uri
+app.config['ENDPOINT'] = args.endpoint
+app.config['AUTH_PROVIDER'] = args.auth_provider
+app.config['TOKEN_PROVIDER'] = args.token_provider
+app.config['DEBUG'] = args.debug
+app.config['VERIFY'] = True if not args.no_verify_endpoint else False
 
 if __name__ == '__main__':
    app.run('0.0.0.0')
