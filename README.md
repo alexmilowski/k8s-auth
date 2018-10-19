@@ -21,3 +21,13 @@ If your application has a public-facing URL, identify it via the `--redirect-uri
 The authentication provider can be set via the `--auth-provider` parameter and defaults to Google.
 
 The token provider can be set via the `--token-provider` parameter and defaults to Google.
+
+## Setup via Google Cloud
+
+Under the "APIs & Services > Credentials" you can:
+
+ 1. Choose "Create credentials > OAuth client_secret ID"
+ 1. Choose "Web Application"
+ 1. Give the application a name.
+ 1. Add the appropriate "Authorized redirect URIs" for your service deployment (or test). This must match exactly the parameter use when you run the service (e.g., the `--redirect-uri` value).
+ 1. Choose "Create" and record the client id and secret to use when running the proxy.
