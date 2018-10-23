@@ -5,6 +5,8 @@ import requests
 from uuid import uuid4
 import os
 import sys
+import json
+import base64
 
 app = Flask(__name__)
 
@@ -46,6 +48,13 @@ def exchange_code(code):
       print(exchange_req.status_code)
       abort(401)
 
+def get_principal(token):
+   parts = token.split('.')
+
+   user = json.loads(base64.b64decode(parts[1] + '=' * (-len(parts[1]) % 4)).decode('utf-8'))
+
+   return user.get('email')
+
 @app.before_request
 def before_request():
    authenticated = 'token' in session and session['token'] is not None
@@ -78,8 +87,17 @@ def authenticated():
 
    info = exchange_code(request.args.get('code',''))
    print(info)
+
+   token = info['id_token']
+
+   if 'WHITELIST' in current_app.config:
+      principal = get_principal(token)
+      if principal not in current_app.config['WHITELIST']:
+         print('Unauthorized, user not in whitelist.')
+         abort(401)
+
    expiry = datetime.now() + timedelta(seconds=info['expires_in'])
-   session['token'] = info['id_token']
+   session['token'] = token
    session['expiry'] = expiry
    return redirect('/')
 
