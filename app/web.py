@@ -1,5 +1,6 @@
 from flask import Flask, request, session, current_app, redirect, abort, Response, stream_with_context
 from urllib.parse import quote as uriencode
+from datetime import datetime, timedelta
 import requests
 from uuid import uuid4
 import os
@@ -49,6 +50,18 @@ def exchange_code(code):
 def before_request():
    authenticated = 'token' in session and session['token'] is not None
 
+   # check expiry
+   if authenticated:
+      if 'expiry' in session:
+         elapsed = session['expiry'] - datetime.now()
+         if elapsed.total_seconds()<0:
+            authenticated = False
+            session.pop('token',None)
+            session.pop('expiry',None)
+      else:
+         authenticated = False
+         session.pop('token',None)
+
    if authenticated or request.path=='/::authenticated::':
       return
 
@@ -65,7 +78,9 @@ def authenticated():
 
    info = exchange_code(request.args.get('code',''))
    print(info)
+   expiry = datetime.now() + timedelta(seconds=info['expires_in'])
    session['token'] = info['id_token']
+   session['expiry'] = expiry
    return redirect('/')
 
 @app.route('/',methods=['GET','POST','PUT','DELETE'])
