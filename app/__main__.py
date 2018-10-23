@@ -11,8 +11,10 @@ parser.add_argument('--endpoint',help='The endpoint of the service being proxied
 parser.add_argument('--auth-provider',help='The endpoint of the service being proxied.',default='https://accounts.google.com/o/oauth2/v2/auth')
 parser.add_argument('--token-provider',help='The endpoint of the service being proxied.',default='https://www.googleapis.com/oauth2/v4/token')
 parser.add_argument('--session-key',help='The flask session key')
-parser.add_argument('--debug',help='The flask session key',default=False)
+parser.add_argument('--debug',help='The flask session key',default=False,action='store_true')
 parser.add_argument('--no-verify-endpoint',default=False,action='store_true',help='Disables SSL key verification for endpoint')
+parser.add_argument('--whitelist',help='A whitelist of principals to allow.')
+parser.add_argument('--allow',help='A principal to allow.',action='append')
 
 args = parser.parse_args()
 
@@ -27,6 +29,22 @@ app.config['AUTH_PROVIDER'] = args.auth_provider
 app.config['TOKEN_PROVIDER'] = args.token_provider
 app.config['DEBUG'] = args.debug
 app.config['VERIFY'] = True if not args.no_verify_endpoint else False
+
+if args.whitelist is not None:
+   import json
+   with open(args.whitelist,'r') as data:
+      whitelist = json.load(data)
+      if type(whitelist)!=list:
+         raise ValueError('Whist list must be a JSON array.')
+      app.config['WHITELIST'] = whitelist
+
+if args.allow is not None:
+   whitelist = app.config.get('WHITELIST')
+   if whitelist is None:
+      whitelist = []
+      app.config['WHITELIST'] = whitelist
+
+   whitelist.extend(args.allow)
 
 if __name__ == '__main__':
    app.run('0.0.0.0')
