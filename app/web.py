@@ -6,11 +6,14 @@ from uuid import uuid4
 import json
 import base64
 import logging
+import pickle
 
 app = Flask(__name__)
 
 def redirect_uri():
-   return (current_app.config['REDIRECT_URI'] if 'REDIRECT_URI' in current_app.config else request.host_url) +'::authenticated::'
+   return (current_app.config['REDIRECT_URI'] if 'REDIRECT_URI' in current_app.config else request.host_url) + \
+          (current_app.config['PREFIX'] if 'PREFIX' in current_app.config else '') + \
+          '::authenticated::'
 
 def set_state():
    state = str(uuid4())
@@ -25,6 +28,8 @@ def auth_uri():
    dest_uri = redirect_uri()
    state = set_state()
    nonce = set_nonce()
+   session['state.path'] = request.path
+   session['state.args'] = pickle.dumps(request.args)
    return current_app.config['AUTH_PROVIDER'] + '?' + \
       'client_id=' + current_app.config['CLIENT_ID'] + \
       '&response_type=code' + \
@@ -88,6 +93,7 @@ def before_request():
       return
 
    logger.debug('Not authenticated, redirecting to auth provider.')
+
    return redirect(auth_uri())
 
 @app.route('/::authenticated::',methods=['GET'])
@@ -116,7 +122,14 @@ def authenticated():
       logger.debug('Token {token} expires in {expiry}'.format(token=token,expiry=expiry.isoformat()))
    session['token'] = token
    session['expiry'] = expiry
-   return redirect('/')
+   path = session.pop('state.path','/')
+   prefix = current_app.config['PREFIX'] if 'PREFIX' in current_app.config else ''
+   if len(prefix)>0 and prefix[-1]=='/':
+      prefix = prefix[0:-1]
+   args = (lambda x : pickle.loads(x) if x is not None else {})(session.pop('state.args',None))
+   for index,name in enumerate(args):
+      path = path + ('?' if index==0 else '&') + name + '=' + uriencode(args[name])
+   return redirect(prefix+path)
 
 @app.route('/',methods=['GET','POST','PUT','DELETE'])
 def index():
