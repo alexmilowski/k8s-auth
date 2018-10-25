@@ -35,5 +35,5 @@ Under the "APIs & Services > Credentials" you can:
 ## Current Docker Image
 
 ```
-alexmilowski/k8s-auth:0014
+alexmilowski/k8s-auth:0016
 ```
