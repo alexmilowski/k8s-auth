@@ -1,4 +1,4 @@
-from flask import Flask, request, session, current_app, redirect, abort, Response, stream_with_context
+from flask import Flask, request, session, current_app, redirect, abort, Response, stream_with_context, make_response
 from urllib.parse import quote as uriencode
 from datetime import datetime, timedelta
 import requests
@@ -9,6 +9,8 @@ import logging
 import pickle
 
 app = Flask(__name__)
+
+profile_properties = ['name','email','picture','given_name','family_name','locale']
 
 def redirect_uri():
    return (current_app.config['REDIRECT_URI'] if 'REDIRECT_URI' in current_app.config else request.host_url) + \
@@ -33,7 +35,7 @@ def auth_uri():
    return current_app.config['AUTH_PROVIDER'] + '?' + \
       'client_id=' + current_app.config['CLIENT_ID'] + \
       '&response_type=code' + \
-      '&scope=openid%20email' + \
+      '&scope=openid%20email%20profile' + \
       '&redirect_uri='+uriencode(dest_uri) + \
       '&state='+state + \
       '&nonce='+nonce
@@ -67,7 +69,13 @@ def get_principal(token):
 
    user = json.loads(base64.b64decode(parts[1] + '=' * (-len(parts[1]) % 4)).decode('utf-8'))
 
-   return user.get('email')
+   return (user.get('email'),user)
+
+def get_profile():
+   info = {}
+   for property in profile_properties:
+      info[property] = session.get(property,'')
+   return info
 
 @app.before_request
 def before_request():
@@ -96,6 +104,7 @@ def before_request():
 
    return redirect(auth_uri())
 
+
 @app.route('/::authenticated::',methods=['GET'])
 def authenticated():
    logger = logging.getLogger(__name__)
@@ -111,17 +120,20 @@ def authenticated():
    if logger.isEnabledFor(logging.DEBUG):
       logger.debug('Code exchanged for token {token}'.format(token=token))
 
+   principal, profile = get_principal(token)
    if 'WHITELIST' in current_app.config:
-      principal = get_principal(token)
       if principal not in current_app.config['WHITELIST']:
          logger.warning('Unauthorized, {user} not in whitelist.'.format(user=principal))
          abort(401)
+
 
    expiry = datetime.now() + timedelta(seconds=info['expires_in'])
    if logger.isEnabledFor(logging.DEBUG):
       logger.debug('Token {token} expires in {expiry}'.format(token=token,expiry=expiry.isoformat()))
    session['token'] = token
    session['expiry'] = expiry
+   for property in profile_properties:
+      session[property] = profile.get(property,'')
    path = session.pop('state.path','/')
    prefix = current_app.config['PREFIX'] if 'PREFIX' in current_app.config else ''
    if len(prefix)>0 and prefix[-1]=='/':
@@ -129,7 +141,23 @@ def authenticated():
    args = (lambda x : pickle.loads(x) if x is not None else {})(session.pop('state.args',None))
    for index,name in enumerate(args):
       path = path + ('?' if index==0 else '&') + name + '=' + uriencode(args[name])
-   return redirect(prefix+path)
+   response = redirect(prefix+path)
+   return response
+
+@app.route('/::logout::',methods=['GET'])
+def logout():
+   session.clear()
+   prefix = current_app.config['PREFIX'] if 'PREFIX' in current_app.config else '/'
+   response = redirect(prefix)
+   return response
+
+@app.route('/::principal::',methods=['GET'])
+def principal():
+   info = get_profile()
+   response = make_response(json.dumps(info))
+   response.headers['Content-Type'] = 'application/json; charset=utf-8'
+   response.status_code = 200
+   return response
 
 @app.route('/',methods=['GET','POST','PUT','DELETE'])
 def index():
@@ -145,6 +173,10 @@ def proxy(path):
 
    if 'token' in session:
       proxy_headers['Authorization'] = 'Bearer ' + session['token']
+
+   profile = get_profile()
+   b64profile = base64.b64encode(json.dumps(profile).encode('utf-8')).decode('utf-8')
+   proxy_headers['X-Profile'] = b64profile
 
    service = current_app.config['ENDPOINT']
    url = service + path
