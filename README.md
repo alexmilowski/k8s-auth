@@ -31,3 +31,9 @@ Under the "APIs & Services > Credentials" you can:
  1. Give the application a name.
  1. Add the appropriate "Authorized redirect URIs" for your service deployment (or test). This must match exactly the parameter use when you run the service (e.g., the `--redirect-uri` value).
  1. Choose "Create" and record the client id and secret to use when running the proxy.
+
+## Current Docker Image
+
+```
+alexmilowski/k8s-auth:0014
+```
