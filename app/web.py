@@ -168,27 +168,9 @@ def proxy(path):
    response_headers.pop('Transfer-Encoding',None)
    response_headers.pop('Content-Length',None)
    lastModified = response_headers.get('Last-Modified')
-   # Because some KNOX / Hadoop things are really broken
    if lastModified is not None:
       response_headers.pop('Last-Modified',None)
       response_headers['Last-Modified'] = unquote_plus(lastModified)
-   # contentType = response_headers.get('Content-Type')
-   # if contentType is not None and contentType[0:9]=='text/html':
-   #
-   #    semicolon = contentType.find(';')
-   #    encoding = 'UTF-8'
-   #    if semicolon>0:
-   #       params = contentType[semicolon+1:]
-   #       pos = params.find('charset=')
-   #       value = params[pos+8:]
-   #       semicolon = value.find(';')
-   #       encoding = value[0:semicolon] if semicolon>0 else value
-   #
-   #    def textchunks():
-   #       for chunk in iterdecode(req.iter_content(chunk_size=1024*32),encoding):
-   #          yield chunk
-   #    data = replaceuri(textchunks(),service,'/')
-   # else:
    data = req.iter_content(chunk_size=1024*32)
 
    response = Response(stream_with_context(data), headers=response_headers)
