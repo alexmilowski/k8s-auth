@@ -34,7 +34,7 @@ spec:
       serviceAccountName: proxy-app
       containers:
       - name: service
-        image: alexmilowski/k8s-auth:0016
+        image: alexmilowski/k8s-auth:0017
         args: [ "$(CLIENT_ID)", "$(CLIENT_SECRET)", "--endpoint", "$(ENDPOINT)", "--whitelist", "/conf/whitelist.json", "--session-key", "$(SESSION_KEY)","--session-redis","redis-master.$(MY_NAMESPACE).svc:6379"]
         resources:
           limits:
