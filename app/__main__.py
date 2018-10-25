@@ -9,6 +9,7 @@ parser = argparse.ArgumentParser(description='Authetication proxy for k8s')
 parser.add_argument('client_id',help='The client id for the authentication provider.')
 parser.add_argument('client_secret',help='The client secret for the authentication provider.')
 parser.add_argument('--redirect-uri',help='The redirect uri to use for this service.')
+parser.add_argument('--prefix',help='The prefix path for the service (e.g., /myapp)')
 parser.add_argument('--endpoint',help='The endpoint of the service being proxied.',default='http://localhost:5000/')
 parser.add_argument('--auth-provider',help='The endpoint of the service being proxied.',default='https://accounts.google.com/o/oauth2/v2/auth')
 parser.add_argument('--token-provider',help='The endpoint of the service being proxied.',default='https://www.googleapis.com/oauth2/v4/token')
@@ -33,6 +34,10 @@ app.config['CLIENT_ID'] = args.client_id
 app.config['CLIENT_SECRET'] = args.client_secret
 if args.redirect_uri is not None:
    app.config['REDIRECT_URI'] = args.redirect_uri
+if args.prefix is not None:
+   if args.prefix[0]=='/':
+      args.prefix = args.prefix[1:]
+   app.config['PREFIX'] = args.prefix
 app.config['ENDPOINT'] = args.endpoint
 app.config['AUTH_PROVIDER'] = args.auth_provider
 app.config['TOKEN_PROVIDER'] = args.token_provider
@@ -70,4 +75,7 @@ if args.allow is not None:
 Session(app)
 
 if __name__ == '__main__':
+   print('REDIRECT: '+app.config.get('REDIRECT_URI',''))
+   print('PREFIX: '+app.config.get('PREFIX',''))
+   print('ENDPOINT: '+app.config.get('ENDPOINT',''))
    app.run('0.0.0.0')
